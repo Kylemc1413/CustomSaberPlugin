@@ -34,22 +34,23 @@ namespace CustomSaber
 
         public void init(XWeaponTrailRenderer TrailRendererPrefab, ColorManager colorManager, Transform PointStart, Transform PointEnd, Material TrailMaterial, Color TrailColor, int Length, Color multiplierSaberColor, ColorType colorType)
         {
-            _pointStart = PointStart;
-            _pointEnd = PointEnd;
-            _maxFrame = Length;
-            _colorManager = colorManager;
-            _trailRendererPrefab = TrailRendererPrefab;
-            _multiplierSaberColor = multiplierSaberColor;
-            _customColor = TrailColor;
-            _customMaterial = TrailMaterial;
-            _saberType = colorType;
+            ReflectionUtil.SetPrivateField(this, "_pointStart", PointStart);
+            ReflectionUtil.SetPrivateField(this, "_pointEnd", PointEnd);
+            ReflectionUtil.SetPrivateField(this, "_maxFrame", Length);
+            ReflectionUtil.SetPrivateField(this, "_trailRendererPrefab", TrailRendererPrefab);
+
+             _colorManager = colorManager;
+             _multiplierSaberColor = multiplierSaberColor;
+             _customColor = TrailColor;
+             _customMaterial = TrailMaterial;
+             _saberType = colorType;
         }
 
-        public override void Start()
+        public new void Start()
         {
-            base.Start();
+            base.Start();            
 
-            ReflectionUtil.GetPrivateField<MeshRenderer>(_trailRenderer, "_meshRenderer").material = _customMaterial;
+            ReflectionUtil.GetPrivateField<MeshRenderer>(ReflectionUtil.GetPrivateField<XWeaponTrailRenderer>(this, "_trailRenderer"), "_meshRenderer").material = _customMaterial;
         }
 
         public void SetColor(Color newColor)
@@ -59,8 +60,8 @@ namespace CustomSaber
 
         public void SetMaterial(Material newMaterial)
         {
-            _customMaterial = newMaterial;
-            ReflectionUtil.GetPrivateField<MeshRenderer>(_trailRenderer, "_meshRenderer").material = _customMaterial;
+             _customMaterial = newMaterial;
+             ReflectionUtil.GetPrivateField<MeshRenderer>(ReflectionUtil.GetPrivateField<XWeaponTrailRenderer>(this, "_trailRenderer"), "_meshRenderer").material = _customMaterial;
         }
     }
 }

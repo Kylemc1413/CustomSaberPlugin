@@ -27,6 +27,7 @@ namespace CustomSaber
         private static List<string> _saberPaths;
         private static AssetBundle _currentSaber;
         public static string _currentSaberPath;
+        public static float SaberRotationDeg;
         public static Saber LeftSaber;
         public static Saber RightSaber;
 
@@ -53,6 +54,8 @@ namespace CustomSaber
             {
                 _currentSaberPath = sabers[0];
             }
+
+            SaberRotationDeg = PlayerPrefs.GetFloat("saberRotation", 0.0f);
         }
 
         public void OnApplicationQuit()

@@ -330,6 +330,15 @@ namespace CustomSaber
                     }
                 }
             }
+
+            if(_rightSaber != null)
+            {
+                _rightSaber.transform.localRotation = Quaternion.Euler(0.0f, 0.0f, -Plugin.SaberRotationDeg);
+            }
+            if (_leftSaber != null)
+            {
+                _leftSaber.transform.localRotation = Quaternion.Euler(0.0f, 0.0f, Plugin.SaberRotationDeg);
+            }
         }
 
         private void OnPauseMenuClosed()

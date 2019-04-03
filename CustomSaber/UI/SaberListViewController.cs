@@ -1,4 +1,5 @@
 ﻿using CustomUI.BeatSaber;
+using CustomUI.UIElements;
 using CustomUI.Utilities;
 using HMUI;
 using System;
@@ -37,6 +38,10 @@ namespace CustomSaber
         public Button _backButton;
         public TextMeshProUGUI _versionNumber;
 
+        public TextMeshProUGUI _saberRotationHeaderText;
+        public CustomSlider _saberRotationSlider;
+        private bool _saberRotationSliderInitialized;
+
         private List<SaberSelection> _saberSelections = new List<SaberSelection>();
         private List<CustomSaber> _sabers = new List<CustomSaber>();
 
@@ -56,6 +61,8 @@ namespace CustomSaber
                 menuShockwaveOriginalState = menuShockwave.enabled;
                 menuShockwave.enabled = false;
 
+                _saberRotationSliderInitialized = false;
+
                 if (firstActivation)
                 {
                     for (int i=0; i<_sabers.Count; i++)
@@ -74,8 +81,8 @@ namespace CustomSaber
 
                     (_sabersTableView.transform as RectTransform).anchorMin = new Vector2(0f, 0f);
                     (_sabersTableView.transform as RectTransform).anchorMax = new Vector2(1f, 1f);
-                    (_sabersTableView.transform as RectTransform).sizeDelta = new Vector2(0f, 60f);
-                    (_sabersTableView.transform as RectTransform).anchoredPosition = new Vector3(0f, 0f);
+                    (_sabersTableView.transform as RectTransform).sizeDelta = new Vector2(0f, 50f);
+                    (_sabersTableView.transform as RectTransform).anchoredPosition = new Vector3(0f, 5f);
 
                     _sabersTableView.SetPrivateField("_preallocatedCells", new TableView.CellsGroup[0]);
                     _sabersTableView.SetPrivateField("_isInitialized", false);
@@ -84,7 +91,7 @@ namespace CustomSaber
                     _sabersTableView.didSelectCellWithIdxEvent += _sabersTableView_DidSelectRowEvent;
 
                     _pageUpButton = Instantiate(Resources.FindObjectsOfTypeAll<Button>().First(x => (x.name == "PageUpButton")), container, false);
-                    (_pageUpButton.transform as RectTransform).anchoredPosition = new Vector2(0f, 30f);//-14
+                    (_pageUpButton.transform as RectTransform).anchoredPosition = new Vector2(0f, 40f);//-14
                     _pageUpButton.interactable = true;
                     _pageUpButton.onClick.AddListener(delegate ()
                     {
@@ -92,7 +99,7 @@ namespace CustomSaber
                     });
 
                     _pageDownButton = Instantiate(Resources.FindObjectsOfTypeAll<Button>().First(x => (x.name == "PageDownButton")), container, false);
-                    (_pageDownButton.transform as RectTransform).anchoredPosition = new Vector2(0f, -30f);//8
+                    (_pageDownButton.transform as RectTransform).anchoredPosition = new Vector2(0f, -20f);//8
                     _pageDownButton.interactable = true;
                     _pageDownButton.onClick.AddListener(delegate ()
                     {
@@ -102,13 +109,13 @@ namespace CustomSaber
 
                     _versionNumber = Instantiate(Resources.FindObjectsOfTypeAll<TextMeshProUGUI>().First(x => (x.name == "Text")), rectTransform, false);
 
-                    (_versionNumber.transform as RectTransform).anchoredPosition = new Vector2(-10f, 10f);
-                    (_versionNumber.transform as RectTransform).anchorMax = new Vector2(1f, 0f);
-                    (_versionNumber.transform as RectTransform).anchorMin = new Vector2(1f, 0f);
+                    (_versionNumber.transform as RectTransform).anchoredPosition = new Vector2(-15f, 0f);
+                    (_versionNumber.transform as RectTransform).anchorMax = new Vector2(1f, 1f);
+                    (_versionNumber.transform as RectTransform).anchorMin = new Vector2(1f, 1f);
 
                     string versionNumber = (IllusionInjector.PluginManager.Plugins.Where(x => x.Name == "Saber Mod").First()).Version;
                     _versionNumber.text = "v" + versionNumber;
-                    _versionNumber.fontSize = 5;
+                    _versionNumber.fontSize = 2;
                     _versionNumber.color = Color.white;
 
                     if (_backButton == null)
@@ -126,6 +133,33 @@ namespace CustomSaber
                             }
                         });
                     }
+
+                    //Saber rotation
+                    _saberRotationHeaderText = Instantiate(Resources.FindObjectsOfTypeAll<TextMeshProUGUI>().First(x => (x.name == "Text")), rectTransform, false);
+                    (_saberRotationHeaderText.transform as RectTransform).anchoredPosition = new Vector2(0f, 18f);
+                    (_saberRotationHeaderText.transform as RectTransform).anchorMax = new Vector2(0.5f, 0f);
+                    (_saberRotationHeaderText.transform as RectTransform).anchorMin = new Vector2(0.5f, 0f);
+                    (_saberRotationHeaderText.transform as RectTransform).sizeDelta = new Vector2(120f, 20f);
+                    _saberRotationHeaderText.text = string.Format("Saber Rotation");
+                    _saberRotationHeaderText.fontSize = 2;
+                    _saberRotationHeaderText.color = Color.white;
+
+                    RectTransform sliderPivot = new GameObject("SliderPivot", typeof(RectTransform)).transform as RectTransform;
+                    sliderPivot.SetParent(_saberRotationHeaderText.transform, false);
+                    sliderPivot.anchoredPosition = new Vector2(0f, -3f);
+
+                    _saberRotationSlider = BeatSaberUI.CreateUISlider(sliderPivot, -180f, 180f, 5f, true, delegate (float newValue)
+                    {
+                        Plugin.SaberRotationDeg = newValue;
+                        //_saberRotationHeaderText.text = string.Format("Saber Rotation: {0}", Plugin.SaberRotationDeg);
+                        PlayerPrefs.SetFloat("saberRotation", Plugin.SaberRotationDeg);
+                        PlayerPrefs.Save();
+                    });
+                    _saberRotationSlider.CurrentValue = Plugin.SaberRotationDeg;
+                    _saberRotationSlider.Scrollbar.value = ((Plugin.SaberRotationDeg + 180f) / 360f);
+                    (_saberRotationSlider.transform as RectTransform).anchoredPosition = new Vector2(0f, 0f);
+                    (_saberRotationSlider.transform as RectTransform).anchorMax = new Vector2(0.5f, 0.5f);
+                    (_saberRotationSlider.transform as RectTransform).anchorMin = new Vector2(0.5f, 0.5f);
                 }
                 //else
                 //{
