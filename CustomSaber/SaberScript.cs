@@ -44,7 +44,8 @@ namespace CustomSaber
         private BeatmapObjectCallbackController _beatmapCallback;
         private GamePauseManager _gamePauseManager;
         private PlayerHeadAndObstacleInteraction _playerHeadAndObstacleInteraction;
-
+        internal static Saber leftBackup;
+        internal static Saber rightBackup;
         private bool _playerHeadWasInObstacle;
 
         public static void LoadAssets()
@@ -90,14 +91,10 @@ namespace CustomSaber
             Restart();
         }
 
-        StandardLevelSceneSetup GetGameSceneSetup()
+        BS_Utils.Gameplay.LevelData GetGameSceneSetup()
         {
-            StandardLevelSceneSetup s = GameObject.FindObjectOfType<StandardLevelSceneSetup>();
-            if (s == null)
-            {
-                s = UnityEngine.Resources.FindObjectsOfTypeAll<StandardLevelSceneSetup>().FirstOrDefault();
-            }
-            return s;
+
+            return BS_Utils.Plugin.LevelData;
         }
 
         private void AddEvents()
@@ -182,8 +179,8 @@ namespace CustomSaber
 
             try
             {
-                StandardLevelSceneSetup mgs = GetGameSceneSetup();
-                BeatmapData beatmapData = mgs.standardLevelSceneSetupData.difficultyBeatmap.beatmapData;
+                BS_Utils.Gameplay.LevelData mgs = GetGameSceneSetup();
+                BeatmapData beatmapData = mgs.GameplayCoreSceneSetupData.difficultyBeatmap.beatmapData;
 
                 BeatmapLineData[] beatmapLinesData = beatmapData.beatmapLinesData;
                 float LastTime = 0.0f;
@@ -237,7 +234,6 @@ namespace CustomSaber
         {
             _leftTopLocation = Vector3.zero;
             _rightTopLocation = Vector3.zero;
-
             Console.WriteLine("Replacing sabers");
             if (CustomSaber == null)
             {
@@ -260,18 +256,22 @@ namespace CustomSaber
         private IEnumerator WaitForSabers(GameObject saberRoot)
         {
             yield return new WaitUntil(() => Resources.FindObjectsOfTypeAll<Saber>().Any());
-
             var sabers = Resources.FindObjectsOfTypeAll<Saber>();
-            Console.WriteLine("Saber list get: " + sabers.Length);
-            foreach (var saber in sabers)
+                foreach (var saber in sabers)
             {
-                Console.WriteLine(saber.saberType + " " + saber.transform.GetChild(0) + saber.transform.GetChild(1) + saber.transform.GetChild(2) + saber.transform.GetChild(3));
-                var handle = saber.transform.Find("Bottom");
-                var blade = saber.transform.Find("Saber");
-                var top = saber.transform.Find("Top");
-
-                Console.WriteLine("Saber Transform Found");
-
+                Console.WriteLine(saber.saberType + " ");//+ saber.transform.GetChild(0) + saber.transform.GetChild(1) + saber.transform.GetChild(2) + saber.transform.GetChild(3));
+                Console.WriteLine("Getting Handle");
+                var handle = saber.gameObject.transform.Find("SaberHandle");
+                Console.WriteLine("Getting Handle");
+                //  var handle = saber.gameObject.transform.Find("BasicSaberModel(Clone)").Find("BasicSaber").Find("SaberHandle");
+                //                var blade = saber.transform.Find("BasicSaberModel(Clone)").Find("BasicSaber").Find("SaberBlade");
+                Console.WriteLine("Getting Blade");
+                var blade = saber.gameObject.transform.Find("SaberBlade");
+                Console.WriteLine("Getting Top");
+                var top = saber.gameObject.transform.Find("Top");
+                Console.WriteLine(handle.gameObject.name);
+                Console.WriteLine(blade.gameObject.name);
+                Console.WriteLine(top.gameObject.name);
                 foreach (Transform t in saber.transform)
                 {
                     var filter = t.GetComponentInChildren<MeshFilter>();
@@ -285,13 +285,17 @@ namespace CustomSaber
                 }
 
                 blade.transform.localRotation = Quaternion.identity;
-                blade.transform.localScale = new Vector3(1, 1, 1);
+               blade.transform.localScale = new Vector3(1, 1, 1);
                 blade.transform.localPosition = new Vector3(0, -0.01f, 0);
                 handle.gameObject.SetActive(false);
 
                 CustomTrail[] trails;
+                Saber.SaberType[] typeForHands = new Saber.SaberType[] { Saber.SaberType.SaberB, Saber.SaberType.SaberA };
+                var playerDataModel = Resources.FindObjectsOfTypeAll<PlayerDataModelSO>().FirstOrDefault();
+                if (playerDataModel && playerDataModel.currentLocalPlayer.playerSpecificSettings.swapColors) typeForHands = typeForHands.Reverse().ToArray();
 
-                if (saber.saberType == Saber.SaberType.SaberB)
+
+                if (saber.saberType == typeForHands[0])
                 {
                     if (saberRoot == null) { }
                     else
@@ -306,7 +310,7 @@ namespace CustomSaber
                         trail.Init(saber);
                     }
                 }
-                else if (saber.saberType == Saber.SaberType.SaberA)
+                else if (saber.saberType == typeForHands[1])
                 {
                     if (saberRoot == null) { }
                     else

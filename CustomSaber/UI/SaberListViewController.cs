@@ -10,7 +10,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VRUI;
-
+using IPA;
 namespace CustomSaber
 {
     class SaberListViewController : VRUIViewController, TableView.IDataSource
@@ -21,6 +21,18 @@ namespace CustomSaber
         private GameObject _previewParent;
         public GameObject _saberPreviewA;
         public GameObject _saberPreviewB;
+        public GameObject _saberPreviewAParent;
+        public GameObject _saberPreviewBParent;
+        private Mesh _BladeA;
+        private Mesh _GlowingA;
+        private Mesh _NormalA;
+        private Mesh _BladeB;
+        private Mesh _GlowingB;
+        private Mesh _NormalB;
+        private bool CustomColorsPresent = IPA.Loader.PluginManager.Plugins.Any(x => x.Name == "CustomColorsEdit" || x.Name == "Custom Colors")
+            || IPA.Loader.PluginManager.AllPlugins.Any(x => x.Metadata.Id == "Custom Colors");
+
+        private MenuShockwave menuShockwave = Resources.FindObjectsOfTypeAll<MenuShockwave>().FirstOrDefault();
 
         public Button _pageUpButton;
         public Button _pageDownButton;
@@ -34,6 +46,7 @@ namespace CustomSaber
         LevelListTableCell _songListTableCellInstance;
 
         private bool PreviewStatus;
+        private bool menuShockwaveOriginalState;
 
         public Action backButtonPressed;
 
@@ -42,6 +55,8 @@ namespace CustomSaber
             try
             {
                 LoadSabers(firstActivation);
+                menuShockwaveOriginalState = menuShockwave.enabled;
+                menuShockwave.enabled = false;
 
                 if (firstActivation)
                 {
@@ -68,9 +83,9 @@ namespace CustomSaber
                     _sabersTableView.SetPrivateField("_isInitialized", false);
                     _sabersTableView.dataSource = this;
 
-                    _sabersTableView.didSelectRowEvent += _sabersTableView_DidSelectRowEvent;
+                    _sabersTableView.didSelectCellWithIdxEvent += _sabersTableView_DidSelectRowEvent;
 
-                    _pageUpButton = Instantiate(Resources.FindObjectsOfTypeAll<Button>().First(x => (x.name == "PageUpButton")), container, false);
+                    _pageUpButton = Instantiate(Resources.FindObjectsOfTypeAll<Button>().Last(x => (x.name == "PageUpButton")), container, false);
                     (_pageUpButton.transform as RectTransform).anchoredPosition = new Vector2(0f, 30f);//-14
                     _pageUpButton.interactable = true;
                     _pageUpButton.onClick.AddListener(delegate ()
@@ -78,7 +93,7 @@ namespace CustomSaber
                         _sabersTableView.PageScrollUp();
                     });
 
-                    _pageDownButton = Instantiate(Resources.FindObjectsOfTypeAll<Button>().First(x => (x.name == "PageDownButton")), container, false);
+                    _pageDownButton = Instantiate(Resources.FindObjectsOfTypeAll<Button>().Last(x => (x.name == "PageDownButton")), container, false);
                     (_pageDownButton.transform as RectTransform).anchoredPosition = new Vector2(0f, -30f);//8
                     _pageDownButton.interactable = true;
                     _pageDownButton.onClick.AddListener(delegate ()
@@ -86,14 +101,14 @@ namespace CustomSaber
                         _sabersTableView.PageScrollDown();
                     });
 
-
-                    _versionNumber = Instantiate(Resources.FindObjectsOfTypeAll<TextMeshProUGUI>().First(x => (x.name == "Text")), rectTransform, false);
+                    _versionNumber = CustomUI.BeatSaber.BeatSaberUI.CreateText(rectTransform, "Text", new Vector2(-10f, -10f));
+                  //  _versionNumber = Instantiate(Resources.FindObjectsOfTypeAll<TextMeshProUGUI>().First(x => (x.name == "Text")), rectTransform, false);
 
                     (_versionNumber.transform as RectTransform).anchoredPosition = new Vector2(-10f, 10f);
                     (_versionNumber.transform as RectTransform).anchorMax = new Vector2(1f, 0f);
                     (_versionNumber.transform as RectTransform).anchorMin = new Vector2(1f, 0f);
 
-                    string versionNumber = (IllusionInjector.PluginManager.Plugins.Where(x => x.Name == "Saber Mod").First()).Version;
+                    string versionNumber = Plugin.PluginVersion;
                     _versionNumber.text = "v" + versionNumber;
                     _versionNumber.fontSize = 5;
                     _versionNumber.color = Color.white;
@@ -106,6 +121,11 @@ namespace CustomSaber
                             if (backButtonPressed != null) backButtonPressed();
                             DestroyPreview();
                             UnLoadSabers();
+                            menuShockwave.enabled = menuShockwaveOriginalState;
+                            if (CustomColorsPresent)
+                            {
+                                CallCustomColors(false);
+                            }
                         });
                     }
                 }
@@ -114,8 +134,8 @@ namespace CustomSaber
                 //    _sabersTableView.ReloadData();
                 //}
                 
-                _sabersTableView.SelectRow(selected);
-                _sabersTableView.ScrollToRow(selected, true);
+                _sabersTableView.SelectCellWithIdx(selected);
+                _sabersTableView.ScrollToCellWithIdx(selected,TableView.ScrollPositionType.Center, true);
 
                 PreviewCurrent();
             }
@@ -146,6 +166,19 @@ namespace CustomSaber
         {
             _sabersTableView.ReloadData();
         }
+        public float CellSize()
+        {
+            return 12f;
+        }
+
+        public int NumberOfCells()
+        {
+            if (this._sabers == null)
+            {
+                return 0;
+            }
+            return this._sabers.Count;
+        }
 
         // ReSharper disable once InconsistentNaming
         public void LoadSabers(bool FirstRun)
@@ -159,7 +192,7 @@ namespace CustomSaber
                     if (sab == "DefaultSabers")
                     {
                         tempsab.Name = "Default Sabers";
-                        tempsab.Author = "Beat Saber";
+                        tempsab.Author = "Beat Games";
                         tempsab.Path = "DefaultSabers";
                         tempsab.AssetBundle = null;
                         tempsab.GameObject = null;
@@ -255,8 +288,13 @@ namespace CustomSaber
 
         public void DestroyPreview()
         {
-            if(_saberPreview)
+            DestroyOriginalPreview();
+            if (_saberPreview)
+            {
+                _saberPreview.name = "";
                 Destroy(_saberPreview);
+            }
+
             PreviewSaber = null;
             if(_previewParent)
                 Destroy(_previewParent);
@@ -282,21 +320,26 @@ namespace CustomSaber
                     PreviewSaber = _sabers[SaberIndex].GameObject;
 
                     _previewParent = new GameObject();
-                    _previewParent.transform.Translate(2.2f, 1.1f, 0.6f);
+                    _previewParent.transform.Translate(2.2f, 1.3f, 0.75f);
                     _previewParent.transform.Rotate(0, -30, 0);
                     if (PreviewSaber)
                     {
                         _saberPreview = Instantiate(PreviewSaber, _previewParent.transform);
+                        _saberPreview.name = "Saber Preview";
                         _saberPreview.transform.Find("LeftSaber").transform.localPosition = new Vector3(0, 0, 0);
                         _saberPreview.transform.Find("RightSaber").transform.localPosition = new Vector3(0, 0, 0);
                         _saberPreview.transform.Find("RightSaber").transform.Translate(0, 0.5f, 0);
+                        if (CustomColorsPresent)
+                        {
+                            CallCustomColors(true);
+                        }
                     }
-
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine(e);
                 }
+
             }
             else
             {
@@ -305,24 +348,131 @@ namespace CustomSaber
             PreviewStatus = false;
         }
 
+        public void DestroyOriginalPreview()
+        {
+            if (_saberPreviewAParent)
+                _saberPreviewAParent.SetActive(false);
+            if (_saberPreviewBParent)
+                _saberPreviewBParent.SetActive(false);
+        }
+
         public void GeneratePreviewOriginal()
         {
-            DestroyPreview();
             if (Plugin.LeftSaber == null || Plugin.RightSaber == null)
                 return;
             PreviewStatus = true;
+            DestroyPreview();
             try
             {
-                _previewParent = new GameObject();
-                _previewParent.transform.Translate(2.2f, 1.1f, 0.6f);
-                _previewParent.transform.Rotate(0, -30, 0);
-                
-                _saberPreviewA = Instantiate(Plugin.LeftSaber.gameObject, _previewParent.transform);
-                _saberPreviewB = Instantiate(Plugin.RightSaber.gameObject, _previewParent.transform);
-                _saberPreviewA.SetActive(true);
-                _saberPreviewB.SetActive(true);
+                if (_saberPreviewAParent)
+                {
+                    _saberPreviewAParent.SetActive(true);
+                    if (_saberPreviewA)
+                        _saberPreviewA.SetActive(true);
 
-                _saberPreviewB.transform.Translate(0, 0.5f, 0);
+                    foreach (Transform t in _saberPreviewA.transform)
+                    {
+                        var filter = t.GetComponentInChildren<MeshFilter>();
+                        foreach (Transform t2 in t)
+                        {
+                            filter = t2.GetComponentInChildren<MeshFilter>();
+                            if (filter.name == "Blade")
+                                if (filter.sharedMesh == null)
+                                    filter.sharedMesh = _BladeA;
+                            if (filter.name == "Normal")
+                                if (filter.sharedMesh == null)
+                                    filter.sharedMesh = _NormalA;
+                            if (filter.name == "Glowing")
+                                if (filter.sharedMesh == null)
+                                    filter.sharedMesh = _GlowingA;
+                        }
+                    }
+                }
+                else
+                {
+                    _saberPreviewAParent = new GameObject("Saber Prewview A Parent");
+                    if (_saberPreviewAParent) DontDestroyOnLoad(_saberPreviewAParent.gameObject);
+                    _saberPreviewA = Instantiate(Plugin.LeftSaber.gameObject, _saberPreviewAParent.transform);
+                    Destroy(_saberPreviewA.GetComponent<VRController>());
+                    _saberPreviewA.SetActive(true);
+
+                    foreach (Transform t in _saberPreviewA.transform)
+                    {
+                        var filter = t.GetComponentInChildren<MeshFilter>();
+                        foreach (Transform t2 in t)
+                        {
+                            filter = t2.GetComponentInChildren<MeshFilter>();
+                            if (filter.name == "Blade")
+                                _BladeA = filter.mesh;
+                            if (filter.name == "Normal")
+                                _NormalA = filter.mesh;
+                            if (filter.name == "Glowing")
+                                _GlowingA = filter.mesh;
+                        }
+                    }
+
+                    _saberPreviewA.transform.localEulerAngles = new Vector3(0, 0, 0);
+                    _saberPreviewA.transform.localPosition = new Vector3(0, 0, 0);
+                    _saberPreviewAParent.transform.position = new Vector3(2.2f, 1.1f, 0.6f);
+                    _saberPreviewAParent.transform.eulerAngles = new Vector3(0, -30, 0);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            try {
+                if (_saberPreviewBParent)
+                {
+                    _saberPreviewBParent.SetActive(true);
+                    if (_saberPreviewB)
+                        _saberPreviewB.SetActive(true);
+                    foreach (Transform t in _saberPreviewB.transform)
+                    {
+                        var filter = t.GetComponentInChildren<MeshFilter>();
+                        foreach (Transform t2 in t)
+                        {
+                            filter = t2.GetComponentInChildren<MeshFilter>();
+                            if (filter.name == "Blade")
+                                if (filter.sharedMesh == null)
+                                    filter.sharedMesh = _BladeB;
+                            if (filter.name == "Normal")
+                                if (filter.sharedMesh == null)
+                                    filter.sharedMesh = _NormalB;
+                            if (filter.name == "Glowing")
+                                if (filter.sharedMesh == null)
+                                    filter.sharedMesh = _GlowingB;
+                        }
+                    }
+                }
+                else
+                {
+                    _saberPreviewBParent = new GameObject("Saber Prewview B Parent");
+                    if (_saberPreviewBParent) DontDestroyOnLoad(_saberPreviewBParent.gameObject);
+                    _saberPreviewB = Instantiate(Plugin.RightSaber.gameObject, _saberPreviewBParent.transform);
+                    Destroy(_saberPreviewB.GetComponent<VRController>());
+                    _saberPreviewB.SetActive(true);
+
+                    foreach (Transform t in _saberPreviewB.transform)
+                    {
+                        var filter = t.GetComponentInChildren<MeshFilter>();
+                        foreach (Transform t2 in t)
+                        {
+                            filter = t2.GetComponentInChildren<MeshFilter>();
+                            if (filter.name == "Blade")
+                                _BladeB = filter.mesh;
+                            if (filter.name == "Normal")
+                                _NormalB = filter.mesh;
+                            if (filter.name == "Glowing")
+                                _GlowingB = filter.mesh;
+                        }
+                    }
+
+                    _saberPreviewB.transform.localEulerAngles = new Vector3(0, 0, 0);
+                    _saberPreviewB.transform.localPosition = new Vector3(0, 0, 0);
+                    _saberPreviewBParent.transform.position = new Vector3(2.2f, 1.6f, 0.6f);
+                    _saberPreviewBParent.transform.eulerAngles = new Vector3(0, -30, 0);
+                }
             }
             catch (Exception e)
             {
@@ -330,7 +480,7 @@ namespace CustomSaber
             }
             PreviewStatus = false;
         }
-        
+
         public float RowHeight()
         {
             return 10f;
@@ -341,16 +491,30 @@ namespace CustomSaber
             return _sabers.Count;
         }
 
-        public TableCell CellForRow(int row)
+        public TableCell CellForIdx(int row)
         {
-            var tableCell = Instantiate(_songListTableCellInstance);
+            LevelListTableCell _tableCell = _sabersTableView.DequeueReusableCellForIdentifier("LevelListTableCell") as LevelListTableCell;
+            if (!_tableCell)
+            {
+                _tableCell = Instantiate(_songListTableCellInstance);
+                _tableCell.reuseIdentifier = "LevelListTableCell";
+            }
+
+            _tableCell.SetPrivateField("_beatmapCharacteristicAlphas", new float[0]);
+            _tableCell.SetPrivateField("_beatmapCharacteristicImages", new UnityEngine.UI.Image[0]);
 
             var saber = _sabers.ElementAtOrDefault(row);
-            tableCell.songName = saber?.Name;
-            tableCell.author = saber?.Author;
-            tableCell.coverImage = Sprite.Create(Texture2D.blackTexture, new Rect(), Vector2.zero);
+            _tableCell.GetPrivateField<TextMeshProUGUI>("_songNameText").text = saber?.Name;
+            _tableCell.GetPrivateField<TextMeshProUGUI>("_authorText").text = saber?.Author;
+            _tableCell.GetPrivateField<UnityEngine.UI.Image>("_coverImage").sprite = Sprite.Create(Texture2D.blackTexture, new Rect(), Vector2.zero);
 
-            return tableCell;
+            return _tableCell;
         }
+
+        private void CallCustomColors(bool loading)
+        {
+            CustomColors.Plugin.ForceOverrideCustomSabers(loading);
+        }
+
     }
 }

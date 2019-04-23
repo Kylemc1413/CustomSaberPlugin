@@ -16,19 +16,19 @@ namespace CustomSaber
     {
         public string Name
         {
-            get { return "Saber Mod"; }
+            get { return "Custom Sabers"; }
         }
 
         public string Version
         {
-            get { return "2.5"; }
+            get { return "2.8.5"; }
         }
-
+        public static string PluginVersion { get; private set; }
         private static List<string> _saberPaths;
         private static AssetBundle _currentSaber;
         public static string _currentSaberPath;
-        public static Saber RightSaber;
         public static Saber LeftSaber;
+        public static Saber RightSaber;
 
         private bool _init;
 
@@ -36,7 +36,7 @@ namespace CustomSaber
         {
             if (_init) return;
             _init = true;
-
+            PluginVersion = Version;
             Console.WriteLine($"Custom Sabers v{Version} loaded!");
             
             SceneManager.activeSceneChanged += SceneManagerOnActiveSceneChanged;
@@ -60,16 +60,19 @@ namespace CustomSaber
             SceneManager.activeSceneChanged -= SceneManagerOnActiveSceneChanged;
         }
         
-        bool doeet = true;
+        bool FirstFetch = true;
         private void SceneManagerOnActiveSceneChanged(Scene arg0, Scene scene)
         {
             if (scene.buildIndex > 0)
             {
-                if (doeet)
+                if (FirstFetch)
                 {
+                    
                     Console.WriteLine("Launching coroutine to grab original sabers!");
                     SharedCoroutineStarter.instance.StartCoroutine(PreloadDefaultSabers());
                     Console.WriteLine("Launched!");
+                    
+                    
                 }
             }
 
@@ -79,7 +82,7 @@ namespace CustomSaber
                 SaberScript.LoadAssets();
             }
 
-            if (scene.name == "Menu")
+            if (scene.name == "MenuCore")
             {
                 if (_currentSaber != null)
                 {
@@ -91,7 +94,7 @@ namespace CustomSaber
         
         private IEnumerator PreloadDefaultSabers()
         {
-            doeet = false;
+            FirstFetch = false;
             Console.WriteLine("Preloading default sabers!");
             var harmony = HarmonyInstance.Create("CustomSaberHarmonyInstance");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
@@ -103,16 +106,17 @@ namespace CustomSaber
             foreach (Saber s in Resources.FindObjectsOfTypeAll<Saber>())
             {
                 Console.WriteLine($"Saber: {s.name}, GameObj: {s.gameObject.name}, {s.ToString()}");
-                if (s.name == "RightSaber") RightSaber = Saber.Instantiate(s);
-                else if (s.name == "LeftSaber") LeftSaber = Saber.Instantiate(s);
+                if (s.name == "LeftSaber") LeftSaber = Saber.Instantiate(s);
+                else if (s.name == "RightSaber") RightSaber = Saber.Instantiate(s);
             }
             Console.WriteLine("Finished! Got default sabers! Setting active state");
-            if (RightSaber) { UnityEngine.Object.DontDestroyOnLoad(RightSaber.gameObject); RightSaber.gameObject.SetActive(false); }
-            if (LeftSaber) { UnityEngine.Object.DontDestroyOnLoad(LeftSaber.gameObject); LeftSaber.gameObject.SetActive(false); }
+            if (LeftSaber) { UnityEngine.Object.DontDestroyOnLoad(LeftSaber.gameObject); LeftSaber.gameObject.SetActive(false); LeftSaber.name = "___OriginalSaberPreviewB"; }
+            if (RightSaber) { UnityEngine.Object.DontDestroyOnLoad(RightSaber.gameObject); RightSaber.gameObject.SetActive(false); RightSaber.name = "___OriginalSaberPreviewA"; }
+
             Console.WriteLine("Unloading GameCore");
             SceneManager.UnloadSceneAsync("GameCore");
             Console.WriteLine("Unloading harmony patches");
-            harmony.UnpatchAll();
+            harmony.UnpatchAll("CustomSaberHarmonyInstance");
         }
 
         public static List<string> RetrieveCustomSabers()
