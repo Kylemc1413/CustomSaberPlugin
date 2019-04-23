@@ -257,7 +257,7 @@ namespace CustomSaber
             }
             StartCoroutine(WaitForSabers(saberRoot));
         }
-
+        
         private IEnumerator WaitForSabers(GameObject saberRoot)
         {
             yield return new WaitUntil(() => Resources.FindObjectsOfTypeAll<Saber>().Any());
@@ -270,10 +270,11 @@ namespace CustomSaber
             foreach (var saber in sabers)
             {
                 //Disappear default saber
-                foreach (MeshFilter t in saber.transform.GetComponentsInChildren< MeshFilter>())
+                foreach (MeshFilter t in saber.transform.GetComponentsInChildren<MeshFilter>())
                 {
+                    t.gameObject.SetActive(saberRoot == null);
                     var filter = t.GetComponentInChildren<MeshFilter>();
-                    if (filter) filter.sharedMesh = null;
+                    if (filter) filter.gameObject.SetActive(saberRoot == null);
                 }
                 Console.WriteLine("Replacing " + saber.saberType);
                 CustomTrail[] trails;
